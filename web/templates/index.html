@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}文字起こし - Whisper 文字起こしツール{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>音声ファイルの文字起こし</h2>
+    <p class="subtitle">MP3、WAV、M4Aなどの音声ファイルを高精度で文字起こしします</p>
+</div>
+
+{% if not has_api_key %}
+<div class="alert alert-warning">
+    <strong>⚠️ APIキーが設定されていません</strong>
+    <p>文字起こしを実行するには、<a href="{{ url_for('settings') }}">設定ページ</a>でOpenAI APIキーを設定してください。</p>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h3>ステップ1: 音声ファイルをアップロード</h3>
+    </div>
+    <div class="card-body">
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <p class="upload-text">ファイルをドラッグ&ドロップ、またはクリックして選択</p>
+            <p class="upload-hint">対応形式: MP3, WAV, M4A, OGG, FLAC, AAC, WMA (最大500MB)</p>
+            <input type="file" id="fileInput" accept=".mp3,.wav,.m4a,.ogg,.flac,.aac,.wma" style="display: none;">
+        </div>
+
+        <div id="fileInfo" class="file-info" style="display: none;">
+            <h4>アップロード済みファイル</h4>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">ファイル名:</span>
+                    <span class="info-value" id="fileName"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">長さ:</span>
+                    <span class="info-value" id="duration"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">サンプルレート:</span>
+                    <span class="info-value" id="sampleRate"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">ファイルサイズ:</span>
+                    <span class="info-value" id="fileSize"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" id="optionsCard" style="display: none;">
+    <div class="card-header">
+        <h3>ステップ2: オプション設定</h3>
+    </div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="language">言語</label>
+                <select id="language" class="form-control">
+                    <option value="">自動検出</option>
+                    <option value="ja" selected>日本語</option>
+                    <option value="en">英語</option>
+                    <option value="zh">中国語</option>
+                    <option value="ko">韓国語</option>
+                    <option value="es">スペイン語</option>
+                    <option value="fr">フランス語</option>
+                    <option value="de">ドイツ語</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="format">出力形式</label>
+                <select id="format" class="form-control">
+                    <option value="txt" selected>テキスト (.txt)</option>
+                    <option value="verbose_json">JSON (タイムスタンプ付き)</option>
+                    <option value="srt">SRT字幕</option>
+                    <option value="vtt">VTT字幕</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="usePreprocessing" checked>
+                音声の前処理を実行（精度向上）
+            </label>
+        </div>
+
+        <div id="preprocessingOptions" class="preprocessing-options">
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useNoiseReduction" checked>
+                    ノイズ除去
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useNormalization" checked>
+                    音量正規化
+                </label>
+            </div>
+        </div>
+
+        <div class="card-section">
+            <h4>カスタムプロンプト（任意）</h4>
+            <p class="help-text">専門用語や文脈情報を指定することで、文字起こしの精度を向上できます</p>
+
+            <div class="form-group">
+                <label for="context">文脈・背景情報</label>
+                <input type="text" id="context" class="form-control" placeholder="例: 医療会議、技術カンファレンス">
+            </div>
+
+            <div class="form-group">
+                <label for="terminology">専門用語（カンマ区切り）</label>
+                <input type="text" id="terminology" class="form-control" placeholder="例: API, REST, Docker, Kubernetes">
+            </div>
+
+            <div class="form-group">
+                <label for="speaker">話者情報</label>
+                <input type="text" id="speaker" class="form-control" placeholder="例: エンジニア3名、マネージャー1名">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" id="transcribeCard" style="display: none;">
+    <div class="card-header">
+        <h3>ステップ3: 文字起こし実行</h3>
+    </div>
+    <div class="card-body">
+        <button id="transcribeBtn" class="btn btn-primary btn-large" {% if not has_api_key %}disabled{% endif %}>
+            文字起こしを開始
+        </button>
+        {% if not has_api_key %}
+        <p class="help-text error">APIキーを設定してください</p>
+        {% endif %}
+    </div>
+</div>
+
+<div id="progressCard" class="card" style="display: none;">
+    <div class="card-header">
+        <h3>処理中...</h3>
+    </div>
+    <div class="card-body">
+        <div class="progress-container">
+            <div class="spinner"></div>
+            <p id="progressText">文字起こし処理を実行中です。しばらくお待ちください...</p>
+        </div>
+    </div>
+</div>
+
+<div id="resultCard" class="card" style="display: none;">
+    <div class="card-header">
+        <h3>✓ 文字起こし完了</h3>
+    </div>
+    <div class="card-body">
+        <div class="result-actions">
+            <button id="downloadBtn" class="btn btn-primary">ダウンロード</button>
+            <button id="newTranscriptionBtn" class="btn btn-secondary">新しい文字起こし</button>
+        </div>
+
+        <div id="previewSection" class="preview-section">
+            <h4>プレビュー</h4>
+            <div id="previewText" class="preview-text"></div>
+        </div>
+    </div>
+</div>
+
+<div id="errorCard" class="card card-error" style="display: none;">
+    <div class="card-header">
+        <h3>❌ エラー</h3>
+    </div>
+    <div class="card-body">
+        <p id="errorText" class="error-text"></p>
+        <button id="retryBtn" class="btn btn-secondary">もう一度試す</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/transcribe.js') }}"></script>
+{% endblock %}

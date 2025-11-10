@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}設定 - Whisper 文字起こしツール{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>設定</h2>
+    <p class="subtitle">OpenAI APIキーとその他の設定を管理します</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>OpenAI APIキー</h3>
+    </div>
+    <div class="card-body">
+        <p class="help-text">
+            文字起こしを実行するには、OpenAI APIキーが必要です。<br>
+            APIキーは<a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI Platform</a>で取得できます。
+        </p>
+
+        {% if masked_api_key %}
+        <div class="alert alert-success">
+            <strong>✓ APIキーが設定されています</strong>
+            <p>現在のAPIキー: <code>{{ masked_api_key }}</code></p>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <strong>⚠️ APIキーが設定されていません</strong>
+            <p>文字起こしを実行するには、下記フォームでAPIキーを設定してください。</p>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="apiKey">APIキー</label>
+            <input type="password" id="apiKey" class="form-control" placeholder="sk-proj-...">
+            <p class="help-text">APIキーは安全に保存され、サーバー上でのみ使用されます。</p>
+        </div>
+
+        <button id="saveApiKeyBtn" class="btn btn-primary">APIキーを保存</button>
+
+        <div id="saveSuccess" class="alert alert-success" style="display: none; margin-top: 1rem;">
+            APIキーが正常に保存されました。
+        </div>
+
+        <div id="saveError" class="alert alert-error" style="display: none; margin-top: 1rem;">
+            <span id="saveErrorText"></span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>使い方ガイド</h3>
+    </div>
+    <div class="card-body">
+        <h4>1. APIキーの取得</h4>
+        <ol>
+            <li><a href="https://platform.openai.com/" target="_blank" rel="noopener">OpenAI Platform</a>にアクセス</li>
+            <li>アカウントにログイン（または新規登録）</li>
+            <li>「API Keys」メニューから新しいAPIキーを作成</li>
+            <li>生成されたAPIキーをコピー</li>
+        </ol>
+
+        <h4>2. APIキーの設定</h4>
+        <ol>
+            <li>上記フォームにAPIキーを入力</li>
+            <li>「APIキーを保存」ボタンをクリック</li>
+            <li>保存が完了したら、<a href="{{ url_for('index') }}">文字起こしページ</a>へ移動</li>
+        </ol>
+
+        <h4>3. 文字起こしの実行</h4>
+        <ol>
+            <li>音声ファイルをアップロード</li>
+            <li>必要に応じてオプションを設定</li>
+            <li>「文字起こしを開始」ボタンをクリック</li>
+            <li>完了したら結果をダウンロード</li>
+        </ol>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>料金について</h3>
+    </div>
+    <div class="card-body">
+        <p>OpenAI Whisper APIの料金は、音声の長さに基づいて課金されます。</p>
+        <ul>
+            <li>料金: $0.006 / 分</li>
+            <li>例: 1時間の音声 = 約$0.36</li>
+        </ul>
+        <p>詳細は<a href="https://openai.com/api/pricing/" target="_blank" rel="noopener">OpenAI Pricing</a>をご確認ください。</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}
