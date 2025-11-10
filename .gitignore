@@ -37,6 +37,7 @@ env/
 # Output files
 outputs/
 *.txt
+!requirements.txt
 *.json
 *.srt
 *.vtt
